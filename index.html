@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spectre Atelier — analyseur de spectre et spectrogramme audio</title>
+  <meta name="description" content="Analyseur audio gratuit dans le navigateur : spectrogramme (FFT 512–16384, échelles linéaire / log / mel), spectre et pics avec noms de notes, chromagramme et tonalité, vectorscope stéréo, lecture en boucle, micro en direct, export PNG / CSV / JSON. Tout reste sur votre appareil.">
+  <meta name="theme-color" content="#0c0f14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip" href="#spec" data-i18n="skip"></a>
+  <!-- ===================================================== header -->
+  <header class="top">
+    <div class="brand">
+      <img src="icons/icon.svg" alt="" width="40" height="40">
+      <div>
+        <h1>Spectre Atelier <span class="tf" lang="kab-Tfng" aria-hidden="true">ⴰⵙⵒⴻⴽⵟⵔ</span></h1>
+        <p data-i18n="tagline"></p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <label class="sr" for="lang" data-i18n="language"></label>
+      <select id="lang" aria-label="Langue / Language / Tutlayt">
+        <option value="fr">Français</option><option value="en">English</option><option value="kab">Taqbaylit</option>
+      </select>
+      <label class="check" id="tfngWrap" hidden><input type="checkbox" id="tfng"> <span data-i18n="tifinagh"></span> ⵣ</label>
+      <button class="btn icon" id="themeBtn" type="button" data-i18n-attr="aria-label:uiTheme;title:uiTheme">◐</button>
+      <button class="btn icon" id="helpBtn" type="button" data-i18n-attr="aria-label:help;title:help">?</button>
+    </div>
+  </header>
+
+  <!-- ===================================================== source bar -->
+  <section class="source" aria-labelledby="srcTitle">
+    <h2 id="srcTitle" class="sr" data-i18n="source"></h2>
+    <div class="src-buttons">
+      <button class="btn primary" id="openBtn" type="button"><span aria-hidden="true">⤒</span> <span data-i18n="openFile"></span></button>
+      <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.ogg,.oga,.flac,.m4a,.aac,.opus,.webm,.aif,.aiff" hidden>
+      <button class="btn" id="demoBtn" type="button"><span aria-hidden="true">∿</span> <span data-i18n="demo"></span></button>
+      <button class="btn" id="micBtn" type="button" aria-pressed="false"><span class="dot" aria-hidden="true"></span> <span data-i18n="mic"></span></button>
+    </div>
+    <div class="src-info">
+      <strong id="srcName">—</strong>
+      <span id="srcMeta" class="mute"></span>
+    </div>
+    <div class="progress" id="progress" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" data-i18n-attr="aria-label:analysing"><span></span></div>
+    <span id="status" class="status" role="status" aria-live="polite"></span>
+  </section>
+
+  <main class="layout">
+    <!-- ===================================================== main column -->
+    <div class="col col-main">
+      <section class="card plot-card" id="specCard" aria-labelledby="specTitle">
+        <div class="card-head">
+          <h2 id="specTitle" data-i18n="spectrogram"></h2>
+          <output class="readout" id="readout" aria-live="off"></output>
+        </div>
+        <div class="canvas-wrap" id="dropZone">
+          <canvas id="spec" class="cv-spec" tabindex="0" role="img" data-i18n-attr="aria-label:specAria"></canvas>
+          <div class="drop-hint" data-i18n="dropHint"></div>
+        </div>
+        <canvas id="overview" class="cv-overview" tabindex="0" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-i18n-attr="aria-label:overviewAria"></canvas>
+        <div class="transport" role="toolbar" data-i18n-attr="aria-label:transport">
+          <div class="tgroup">
+            <button class="btn tbtn" id="playBtn" type="button" data-i18n-attr="aria-label:play;title:playKey"><span aria-hidden="true" id="playIcon">▶</span></button>
+            <button class="btn tbtn" id="stopBtn" type="button" data-i18n-attr="aria-label:stop;title:stop"><span aria-hidden="true">■</span></button>
+            <button class="btn tbtn" id="loopBtn" type="button" aria-pressed="false" data-i18n-attr="aria-label:loop;title:loopKey"><span aria-hidden="true">⟲</span></button>
+            <button class="btn tbtn" id="clearSelBtn" type="button" data-i18n-attr="aria-label:clearSel;title:clearSel"><span aria-hidden="true">⌫</span></button>
+            <span class="time mono" id="timeLabel">0.000 / 0.000 s</span>
+            <span class="sel mono" id="selLabel"></span>
+          </div>
+          <div class="tgroup zoom">
+            <span class="mute small" data-i18n="zoomTime"></span>
+            <button class="btn tbtn" id="tZoomIn" type="button" data-i18n-attr="aria-label:zoomInTime;title:zoomInTime">+</button>
+            <button class="btn tbtn" id="tZoomOut" type="button" data-i18n-attr="aria-label:zoomOutTime;title:zoomOutTime">−</button>
+            <button class="btn tbtn" id="tFit" type="button" data-i18n-attr="aria-label:fitTime;title:fitTime">↔</button>
+            <span class="mute small" data-i18n="zoomFreq"></span>
+            <button class="btn tbtn" id="fZoomIn" type="button" data-i18n-attr="aria-label:zoomInFreq;title:zoomInFreq">+</button>
+            <button class="btn tbtn" id="fZoomOut" type="button" data-i18n-attr="aria-label:zoomOutFreq;title:zoomOutFreq">−</button>
+            <button class="btn tbtn" id="fFit" type="button" data-i18n-attr="aria-label:fitFreq;title:fitFreq">↕</button>
+          </div>
+        </div>
+        <p class="hint small mute" data-i18n-html="gestures"></p>
+      </section>
+
+      <section class="card" aria-labelledby="spTitle">
+        <div class="card-head">
+          <h2 id="spTitle" data-i18n="spectrum"></h2>
+          <div class="seg" role="radiogroup" data-i18n-attr="aria-label:specMode" id="specModeSeg">
+            <button type="button" role="radio" data-val="avg" data-i18n="modeAvg"></button>
+            <button type="button" role="radio" data-val="playhead" data-i18n="modePlayhead"></button>
+          </div>
+          <output class="readout" id="spReadout" aria-live="off"></output>
+        </div>
+        <p class="small mute" id="spRange"></p>
+        <div class="spec-row">
+          <canvas id="spectrum" class="cv-spectrum" role="img" data-i18n-attr="aria-label:spectrumAria"></canvas>
+          <div class="peaks">
+            <div class="peaks-head">
+              <h3 data-i18n="peaks"></h3>
+              <label class="field inline small"><span data-i18n="peakCount"></span>
+                <input type="number" id="peaks" min="1" max="30" step="1">
+              </label>
+            </div>
+            <div class="table-wrap">
+              <table id="peakTable">
+                <thead><tr><th>#</th><th data-i18n="colFreq"></th><th data-i18n="colNote"></th><th data-i18n="colCents"></th><th data-i18n="colLevel"></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card plot-card" aria-labelledby="chTitle">
+        <div class="card-head">
+          <h2 id="chTitle" data-i18n="chroma"></h2>
+          <span class="badge" id="keyBadge" aria-live="polite"></span>
+        </div>
+        <canvas id="chroma" class="cv-chroma" role="img" data-i18n-attr="aria-label:chromaAria"></canvas>
+        <p class="small mute" data-i18n="keyNote"></p>
+      </section>
+    </div>
+
+    <!-- ===================================================== side column -->
+    <aside class="col col-side">
+      <section class="card" aria-labelledby="anTitle">
+        <h2 id="anTitle" data-i18n="analysis"></h2>
+        <div class="grid2">
+          <label class="field"><span data-i18n="fftSize"></span>
+            <select id="fft"><option>512</option><option>1024</option><option>2048</option><option>4096</option><option>8192</option><option>16384</option></select>
+          </label>
+          <label class="field"><span data-i18n="window"></span>
+            <select id="win"><option value="hann" data-i18n="w_hann"></option><option value="hamming" data-i18n="w_hamming"></option><option value="blackmanharris" data-i18n="w_bh"></option><option value="rect" data-i18n="w_rect"></option></select>
+          </label>
+          <label class="field"><span data-i18n="overlap"></span>
+            <select id="ov"><option value="0">0 %</option><option value="50">50 %</option><option value="75">75 %</option><option value="87.5">87,5 %</option></select>
+          </label>
+          <label class="field"><span data-i18n="channel"></span>
+            <select id="ch"><option value="mid" data-i18n="ch_mid"></option><option value="left" data-i18n="ch_left"></option><option value="right" data-i18n="ch_right"></option><option value="side" data-i18n="ch_side"></option></select>
+          </label>
+        </div>
+        <p class="small mute mono" id="resInfo"></p>
+      </section>
+
+      <section class="card" aria-labelledby="dispTitle">
+        <h2 id="dispTitle" data-i18n="display"></h2>
+        <div class="field"><span id="scaleLbl" data-i18n="freqScale"></span>
+          <div class="seg wide" role="radiogroup" aria-labelledby="scaleLbl" id="scaleSeg">
+            <button type="button" role="radio" data-val="lin" data-i18n="sc_lin"></button>
+            <button type="button" role="radio" data-val="log" data-i18n="sc_log"></button>
+            <button type="button" role="radio" data-val="mel" data-i18n="sc_mel"></button>
+          </div>
+        </div>
+        <div class="grid2">
+          <label class="field"><span data-i18n="fmin"></span><input type="number" id="fmin" min="0" max="95000" step="1"></label>
+          <label class="field"><span data-i18n="fmax"></span><input type="number" id="fmax" min="10" max="96000" step="1"></label>
+          <label class="field"><span data-i18n="dbMin"></span><input type="range" id="dbMin" min="-160" max="-10" step="1"><output class="mono small" id="dbMinOut"></output></label>
+          <label class="field"><span data-i18n="dbMax"></span><input type="range" id="dbMax" min="-100" max="20" step="1"><output class="mono small" id="dbMaxOut"></output></label>
+        </div>
+        <label class="field"><span data-i18n="colormap"></span>
+          <select id="cmap">
+            <option value="braise" data-i18n="cm_braise"></option><option value="oasis" data-i18n="cm_oasis"></option><option value="glacier" data-i18n="cm_glacier"></option>
+            <option value="sahara" data-i18n="cm_sahara"></option><option value="prisme" data-i18n="cm_prisme"></option><option value="gris" data-i18n="cm_gris"></option><option value="encre" data-i18n="cm_encre"></option>
+          </select>
+        </label>
+        <div class="cmap-preview" id="cmapPreview" aria-hidden="true"></div>
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="grid"> <span data-i18n="noteGrid"></span></label>
+          <label class="check"><input type="checkbox" id="piano"> <span data-i18n="pianoRuler"></span></label>
+        </div>
+        <div class="grid2">
+          <label class="field"><span data-i18n="a4"></span><input type="number" id="a4" min="400" max="480" step="0.1"></label>
+          <label class="field"><span data-i18n="notation"></span>
+            <select id="nt"><option value="auto" data-i18n="nt_auto"></option><option value="en" data-i18n="nt_en"></option><option value="solf" data-i18n="nt_solf"></option></select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="stTitle">
+        <h2 id="stTitle" data-i18n="stereo"></h2>
+        <div class="stereo">
+          <canvas id="scope" class="cv-scope" role="img" data-i18n-attr="aria-label:scopeAria"></canvas>
+          <div class="corr">
+            <div class="meter" aria-hidden="true"><span class="tick l">−1</span><span class="tick c">0</span><span class="tick r">+1</span><i id="corrMark"></i></div>
+            <dl class="kv small">
+              <dt data-i18n="corrHere"></dt><dd class="mono" id="corrHere">—</dd>
+              <dt data-i18n="corrFile"></dt><dd class="mono" id="corrFile">—</dd>
+              <dt data-i18n="widthFile"></dt><dd class="mono" id="widthFile">—</dd>
+            </dl>
+          </div>
+        </div>
+        <p class="small mute" id="stereoNote" data-i18n="stereoNote"></p>
+      </section>
+
+      <section class="card" aria-labelledby="exTitle">
+        <h2 id="exTitle" data-i18n="export"></h2>
+        <label class="field"><span data-i18n="pngSize"></span>
+          <select id="png"><option value="1920x1080">1920 × 1080</option><option value="3000x1500">3000 × 1500</option><option value="4096x2048">4096 × 2048</option></select>
+        </label>
+        <div class="btn-grid">
+          <button class="btn" id="exPng" type="button" data-i18n="exPng"></button>
+          <button class="btn" id="exPeaks" type="button" data-i18n="exPeaks"></button>
+          <button class="btn" id="exSpectrum" type="button" data-i18n="exSpectrum"></button>
+          <button class="btn" id="exJson" type="button" data-i18n="exJson"></button>
+          <button class="btn" id="imJson" type="button" data-i18n="imJson"></button>
+          <button class="btn" id="shareBtn" type="button" data-i18n="share"></button>
+        </div>
+        <input type="file" id="jsonInput" accept=".json,application/json" hidden>
+        <button class="btn ghost small" id="resetBtn" type="button" data-i18n="reset"></button>
+        <p class="small mute" data-i18n="privacy"></p>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="foot">
+    <span data-i18n="footer"></span>
+    <a href="https://github.com/salimadour31-boop/spectre-atelier" data-i18n="sourceCode"></a>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <dialog id="helpDlg" aria-labelledby="helpTitle">
+    <form method="dialog">
+      <h2 id="helpTitle" data-i18n="help"></h2>
+      <div data-i18n-html="helpBody"></div>
+      <button class="btn primary" value="close" data-i18n="close"></button>
+    </form>
+  </dialog>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/dsp.js"></script>
+  <script src="js/colormaps.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
