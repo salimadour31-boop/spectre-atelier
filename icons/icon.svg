@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Spectre Atelier">
+  <defs>
+    <linearGradient id="g" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#3a1260"/><stop offset=".45" stop-color="#dd4a2b"/><stop offset=".8" stop-color="#f7902a"/><stop offset="1" stop-color="#fff2b0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0b0e13"/>
+  <g fill="url(#g)">
+    <rect x="9" y="38" width="5" height="16" rx="1.5"/><rect x="16" y="26" width="5" height="28" rx="1.5"/><rect x="23" y="14" width="5" height="40" rx="1.5"/>
+    <rect x="30" y="22" width="5" height="32" rx="1.5"/><rect x="37" y="32" width="5" height="22" rx="1.5"/><rect x="44" y="28" width="5" height="26" rx="1.5"/><rect x="51" y="42" width="5" height="12" rx="1.5"/>
+  </g>
+  <path d="M7 31 C 14 31, 16 11, 25 11 S 36 27, 44 24 S 52 34, 58 34" fill="none" stroke="#b9f15c" stroke-width="2.6" stroke-linecap="round"/>
+</svg>

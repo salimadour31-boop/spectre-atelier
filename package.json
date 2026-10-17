@@ -1,0 +1,1 @@
+{ "name": "spectre-atelier", "private": true, "license": "MIT", "scripts": { "test": "node tests/dsp.test.js", "test:ui": "node tests/ui.test.js" } }
